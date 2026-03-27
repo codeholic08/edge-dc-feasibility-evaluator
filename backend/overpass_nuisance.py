@@ -22,10 +22,9 @@ from pyproj import CRS, Transformer
 from shapely.geometry import Point, Polygon
 from shapely.ops import transform, unary_union
 
-logger = logging.getLogger(__name__)
+from overpass_client import overpass_post
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-USER_AGENT = "EdgeDataCenterFeasibilityEvaluator/2.0 (hackathon; +https://openstreetmap.org/copyright)"
+logger = logging.getLogger(__name__)
 
 # Point schools (and way centroids without geometry) get a notional “sensitive receptor” zone.
 DEFAULT_SCHOOL_BUFFER_M = 80.0
@@ -153,7 +152,6 @@ async def fetch_nuisance_disk_metrics(
     """
     Two Overpass round-trips (residential ways, then schools) to stay under parser complexity limits.
     """
-    headers = {"User-Agent": USER_AGENT}
     timeout = timeout_seconds + 8.0
 
     q_res = f"""
@@ -171,13 +169,11 @@ async def fetch_nuisance_disk_metrics(
     """
 
     async with httpx.AsyncClient(timeout=timeout) as client:
-        r1 = await client.post(OVERPASS_URL, data={"data": q_res}, headers=headers)
-        r1.raise_for_status()
-        res_elements = r1.json().get("elements") or []
+        res_data = await overpass_post(q_res, client=client, label="nuisance/residential")
+        res_elements = res_data.get("elements") or []
 
-        r2 = await client.post(OVERPASS_URL, data={"data": q_school}, headers=headers)
-        r2.raise_for_status()
-        school_elements = r2.json().get("elements") or []
+        school_data = await overpass_post(q_school, client=client, label="nuisance/schools")
+        school_elements = school_data.get("elements") or []
 
     disk, disk_area_m2, to_utm, _ = _disk_and_transformers(lat, lon, float(radius_meters))
 

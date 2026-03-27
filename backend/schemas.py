@@ -2,7 +2,7 @@
 Pydantic models for the public HTTP API.
 
 These shapes mirror what the Next.js dashboard consumes so the contract stays obvious
-during Phase 1 (mocked data) and Phase 2 (live HIFLD / Overpass).
+across all scoring dimensions (power, zoning, climate, flood, air quality, fiber).
 """
 
 from typing import Literal, Optional
@@ -36,27 +36,18 @@ class EvaluateRequest(BaseModel):
 
 class PowerBreakdown(BaseModel):
     """
-    Constraint 1 — proximity to high-voltage infrastructure (HIFLD substations in Phase 2).
+    Constraint 1 — proximity to high-voltage infrastructure (HIFLD substations).
 
-    Phase 1 uses hard-coded distance_miles to prove the scoring pipeline end-to-end.
+    Weight: 35% of blended feasibility score.
     """
 
     score: int = Field(..., ge=0, le=100, description="Raw 0–100 score for this constraint")
-    weight_percent: int = Field(60, description="Weight in the blended feasibility score")
-    distance_miles: float = Field(..., description="Great-circle distance to nearest substation (mocked in Phase 1)")
-    band_label: str = Field(
-        ...,
-        description="Human-readable bucket: <1 mi, 1–3 mi, or >3 mi",
-    )
+    weight_percent: int = Field(35, description="Weight in the blended feasibility score")
+    distance_miles: float = Field(..., description="Great-circle distance to nearest substation")
+    band_label: str = Field(..., description="Human-readable bucket: <1 mi, 1–3 mi, or >3 mi")
     data_source: str = Field(..., description="Dataset attribution for judges / compliance")
-    rationale: str = Field(
-        ...,
-        description="Why this factor matters when explaining tradeoffs to a property owner",
-    )
-    scoring_rules_plain: str = Field(
-        ...,
-        description="Plain-language description of how the 0–100 subscore is assigned",
-    )
+    rationale: str = Field(..., description="Why this factor matters when explaining tradeoffs to a property owner")
+    scoring_rules_plain: str = Field(..., description="Plain-language description of how the 0–100 subscore is assigned")
 
 
 class ZoningBreakdown(BaseModel):
@@ -65,33 +56,90 @@ class ZoningBreakdown(BaseModel):
 
     ``residential_percent`` is the **combined** share of the analysis disk covered by residential
     land polygons plus school footprints / buffers (used for the 0–100 subscore).
+
+    Weight: 25% of blended feasibility score.
     """
 
     score: int = Field(..., ge=0, le=100)
-    weight_percent: int = Field(40)
+    weight_percent: int = Field(25)
     residential_percent: float = Field(
-        ...,
-        ge=0,
-        le=100,
+        ..., ge=0, le=100,
         description="Combined sensitive coverage % of disk (residential land + schools — score input)",
     )
     residential_land_percent: float = Field(
-        ...,
-        ge=0,
-        le=100,
+        ..., ge=0, le=100,
         description="Residential landuse polygons only, as % of the same disk",
     )
     school_count: int = Field(..., ge=0, description="Distinct OSM school features in radius")
     radius_meters: int = Field(500, description="Analysis disk radius")
     data_source: str
-    rationale: str = Field(
-        ...,
-        description="Why residential adjacency matters for noise, permitting, and neighbor risk",
-    )
-    scoring_rules_plain: str = Field(
-        ...,
-        description="Plain-language rule for the residential / noise subscore",
-    )
+    rationale: str = Field(..., description="Why residential adjacency matters for noise, permitting, and neighbor risk")
+    scoring_rules_plain: str = Field(..., description="Plain-language rule for the residential / noise subscore")
+
+
+class ClimateBreakdown(BaseModel):
+    """
+    Constraint 3 — cooling climate risk from Open-Meteo historical archive.
+
+    Weight: 15% of blended feasibility score.
+    """
+
+    score: int = Field(..., ge=0, le=100)
+    weight_percent: int = Field(15)
+    avg_temp_f: float = Field(..., description="Annual average of daily maximum temperature in °F")
+    extreme_heat_days: int = Field(..., ge=0, description="Days per year where daily max exceeded 95 °F")
+    data_source: str = Field(..., description="Dataset attribution")
+    rationale: str = Field(..., description="Why climate heat load matters for edge DC OPEX")
+    scoring_rules_plain: str = Field(..., description="Plain-language scoring bands for temperature and heat days")
+
+
+class FloodBreakdown(BaseModel):
+    """
+    Constraint 4 — FEMA flood zone classification (NFHL ArcGIS FeatureServer).
+
+    Weight: 10% of blended feasibility score.
+    """
+
+    score: int = Field(..., ge=0, le=100)
+    weight_percent: int = Field(10)
+    zone_label: str = Field(..., description="Most restrictive FEMA flood zone within 200 m (e.g. AE, X, VE)")
+    is_high_risk: bool = Field(..., description="True if any A or V zone intersects the 200 m search radius")
+    feature_count: int = Field(..., ge=0, description="Number of FEMA NFHL features found within search radius")
+    data_source: str = Field(..., description="Dataset attribution")
+    rationale: str = Field(..., description="Why FEMA SFHA designation matters for infrastructure permitting")
+    scoring_rules_plain: str = Field(..., description="Plain-language scoring rule for flood zone classification")
+
+
+class AirQualityBreakdown(BaseModel):
+    """
+    Constraint 5 — ambient PM2.5 and dust concentrations (Open-Meteo Air Quality API).
+
+    Weight: 8% of blended feasibility score.
+    """
+
+    score: int = Field(..., ge=0, le=100)
+    weight_percent: int = Field(8)
+    avg_pm25: float = Field(..., ge=0, description="7-day hourly mean PM2.5 concentration in µg/m³")
+    avg_dust: float = Field(..., ge=0, description="7-day hourly mean dust concentration in µg/m³")
+    data_source: str = Field(..., description="Dataset attribution")
+    rationale: str = Field(..., description="Why PM2.5 raises filter and permitting costs for edge DCs")
+    scoring_rules_plain: str = Field(..., description="Plain-language PM2.5 scoring bands aligned with EPA AQI")
+
+
+class FiberBreakdown(BaseModel):
+    """
+    Constraint 6 — fiber conduit and telecom node proximity (OSM Overpass).
+
+    Weight: 7% of blended feasibility score.
+    """
+
+    score: int = Field(..., ge=0, le=100)
+    weight_percent: int = Field(7)
+    fiber_way_count: int = Field(..., ge=0, description="OSM fiber conduit ways within 1000 m")
+    telecom_node_count: int = Field(..., ge=0, description="OSM telecom / data-center nodes within 500 m")
+    data_source: str = Field(..., description="Dataset attribution")
+    rationale: str = Field(..., description="Why mapped street fiber lowers dark-fiber costs for edge DCs")
+    scoring_rules_plain: str = Field(..., description="Plain-language scoring bands for fiber way and telecom node counts")
 
 
 class EvaluateResponse(BaseModel):
@@ -99,44 +147,44 @@ class EvaluateResponse(BaseModel):
 
     address: str
     coordinate_source: Literal["geocoded", "user_pin"] = Field(
-        ...,
-        description="Whether coordinates came from Nominatim or from the client's map pin",
+        ..., description="Whether coordinates came from Nominatim or from the client's map pin",
     )
     latitude: float
     longitude: float
-    final_score: float = Field(..., ge=0, le=100, description="Weighted blend: 0.6 * power + 0.4 * zoning")
+    final_score: float = Field(..., ge=0, le=100, description="Weighted blend across six dimensions")
     power: PowerBreakdown
     zoning: ZoningBreakdown
+    climate: ClimateBreakdown
+    flood: FloodBreakdown
+    air_quality: AirQualityBreakdown
+    fiber: FiberBreakdown
     recommendation_title: str
     recommendation_body: str
     phase_note: str = Field(
         ...,
-        description="Explicit banner that Phase 1 uses mocked substation/zoning inputs",
+        description=(
+            "Banner listing all six live data sources: HIFLD substations (grid), OSM Overpass "
+            "(zoning + fiber), Open-Meteo archive (climate), FEMA NFHL (flood), "
+            "Open-Meteo AQ (air quality). Service-error fallbacks noted per criterion."
+        ),
     )
     processing_time_ms: int = Field(
-        ...,
-        ge=0,
-        description="Server-side time to geocode + score (milliseconds); supports the ~1 minute SLA story",
+        ..., ge=0,
+        description="Server-side time to geocode + score all six dimensions (milliseconds)",
     )
     verdict_plain_english: str = Field(
-        ...,
-        description="One short paragraph a first-time user can read before diving into numbers",
+        ..., description="One short paragraph a first-time user can read before diving into numbers",
     )
     formula_display: str = Field(
-        ...,
-        description="Exact weighting shown in plain text for auditability in front of owners",
+        ..., description="Exact weighting across all six dimensions for auditability",
     )
     methodology_for_teams: str = Field(
-        ...,
-        description="How to defend the model in a sales or real-estate conversation",
+        ..., description="How to defend the model in a sales or real-estate conversation",
     )
     coverage_for_teams: str = Field(
-        ...,
-        description="How the same pipeline applies across regions without retooling the UI",
+        ..., description="How the same pipeline applies across regions without retooling the UI",
     )
     owner_talking_points: list[str] = Field(
-        ...,
-        min_length=1,
-        max_length=6,
+        ..., min_length=1, max_length=10,
         description="Short bullets reps can read aloud or drop into email",
     )
