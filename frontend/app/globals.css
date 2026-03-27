@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f4f6f9;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --accent: #0ea5e9;
+  --accent-muted: #0284c7;
+  --success: #059669;
+  --warning: #d97706;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* Leaflet map inside cards: clip tiles to rounded border, stay below overlays */
+.geocoded-map-container .leaflet-container,
+.location-pick-map-container .leaflet-container {
+  font-family: inherit;
+  border-radius: 0.75rem;
+  z-index: 0;
+}
