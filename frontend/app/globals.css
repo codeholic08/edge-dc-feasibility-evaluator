@@ -1,26 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Mulish:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #f4f6f9;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --accent: #0ea5e9;
-  --accent-muted: #0284c7;
-  --success: #059669;
-  --warning: #d97706;
+  --brand-orange: #e3814c;
+  --brand-orange-light: #f0a070;
+  --brand-teal: #008d7f;
+  --brand-teal-light: #00b8a6;
+  --brand-sky: #3dabd8;
+  --brand-gold: #ecc137;
+  --bg-deep: #080e1c;
+  --bg-mid: #0d1a2e;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-strong: rgba(255, 255, 255, 0.15);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
+  font-family: "Mulish", system-ui, sans-serif;
+  background: linear-gradient(135deg, #080e1c 0%, #0d1a2e 50%, #071818 100%);
+  background-attachment: fixed;
+  color: #e2e8f0;
+  min-height: 100vh;
 }
 
-/* Leaflet map inside cards: clip tiles to rounded border, stay below overlays */
+/* ── Glass utility classes ─────────────────────────────── */
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .glass-orange {
+    background: rgba(227, 129, 76, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(227, 129, 76, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 30px rgba(227, 129, 76, 0.1);
+  }
+
+  .glass-teal {
+    background: rgba(0, 141, 127, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 141, 127, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 30px rgba(0, 141, 127, 0.1);
+  }
+
+  .font-display {
+    font-family: "Onest", system-ui, sans-serif;
+  }
+
+  .text-gradient-orange {
+    background: linear-gradient(135deg, #f0a070, #e3814c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-teal {
+    background: linear-gradient(135deg, #00b8a6, #008d7f);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #e3814c, #c96a35);
+    color: white;
+    font-family: "Onest", sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border-radius: 9999px;
+    padding: 0.75rem 1.75rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(227, 129, 76, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #f0a070, #e3814c);
+    box-shadow: 0 6px 28px rgba(227, 129, 76, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ── Animated background orbs ──────────────────────────── */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Score ring animation ───────────────────────────────── */
+@keyframes dash-in {
+  from { stroke-dashoffset: var(--full-dash); }
+}
+
+.score-ring-circle {
+  animation: dash-in 1s ease-out forwards;
+}
+
+/* ── Comparison bar fill animation ─────────────────────── */
+@keyframes bar-fill {
+  from { width: 0; }
+}
+
+.bar-fill {
+  animation: bar-fill 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Leaflet maps ────────────────────────────────────────── */
 .geocoded-map-container .leaflet-container,
 .location-pick-map-container .leaflet-container {
-  font-family: inherit;
+  font-family: "Mulish", inherit;
   border-radius: 0.75rem;
   z-index: 0;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(13, 26, 46, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.leaflet-popup-tip {
+  background: rgba(13, 26, 46, 0.95);
+}
+
+/* ── Section divider line ───────────────────────────────── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+}
+
+/* ── Input fields ───────────────────────────────────────── */
+.glass-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  border-radius: 12px;
+  transition: all 0.25s ease;
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.glass-input:focus {
+  outline: none;
+  border-color: rgba(227, 129, 76, 0.5);
+  box-shadow: 0 0 0 3px rgba(227, 129, 76, 0.12);
+  background: rgba(255, 255, 255, 0.07);
 }

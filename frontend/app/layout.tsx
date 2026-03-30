@@ -1,11 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -25,8 +20,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        {children}
+      <body className={`${geistMono.variable} font-sans antialiased`}>
+        {/* Background ambient orbs */}
+        <div className="bg-orb w-[600px] h-[600px] top-[-200px] left-[-200px]"
+          style={{ background: "radial-gradient(circle, #e3814c, transparent)" }} />
+        <div className="bg-orb w-[500px] h-[500px] top-[40%] right-[-150px]"
+          style={{ background: "radial-gradient(circle, #008d7f, transparent)" }} />
+        <div className="bg-orb w-[400px] h-[400px] bottom-[-100px] left-[30%]"
+          style={{ background: "radial-gradient(circle, #3dabd8, transparent)" }} />
+        <div className="relative z-10">
+          {children}
+        </div>
       </body>
     </html>
   );

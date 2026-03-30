@@ -99,7 +99,7 @@ export default function LocationPickMap({ pin, onPinChange }: Props) {
   }, [pin, syncMarker]);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+    <div className="overflow-hidden rounded-xl shadow-glass" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
       <div
         ref={containerRef}
         className="location-pick-map-container h-[min(300px,45vh)] w-full min-h-[220px]"

@@ -58,9 +58,11 @@ async def nearest_substation_miles(
     lon: float,
     *,
     timeout_seconds: float = 28.0,
-) -> tuple[float, str]:
+) -> tuple[float, str | None, str]:
     """
-    Return (distance_miles, short_provenance_note).
+    Return (distance_miles, nearest_substation_name, short_provenance_note).
+
+    ``nearest_substation_name`` is ``None`` if the NAME attribute is absent from the feature.
 
     Raises:
         RuntimeError: if no substation could be resolved after widening the search.
@@ -96,6 +98,7 @@ async def nearest_substation_miles(
                 continue
 
             best_mi: float | None = None
+            best_name: str | None = None
             for feat in feats:
                 pair = _coords_from_feature(feat)
                 if pair is None:
@@ -104,12 +107,15 @@ async def nearest_substation_miles(
                 mi = _haversine_miles(lat, lon, slat, slon)
                 if best_mi is None or mi < best_mi:
                     best_mi = mi
+                    attrs = feat.get("attributes") or {}
+                    raw_name = attrs.get("NAME") or attrs.get("name")
+                    best_name = str(raw_name).strip() if raw_name else None
 
             if best_mi is not None:
                 note = (
                     f"HIFLD Open Data / ArcGIS FeatureServer; nearest of {len(feats)} candidates "
                     f"within {label}"
                 )
-                return round(best_mi, 2), note
+                return round(best_mi, 2), best_name, note
 
     raise RuntimeError("HIFLD returned no substation features near this pin")

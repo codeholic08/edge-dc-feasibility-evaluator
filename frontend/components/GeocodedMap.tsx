@@ -65,7 +65,7 @@ export default function GeocodedMap({
   }, [latitude, longitude, addressLabel, coordinateSource]);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+    <div className="overflow-hidden rounded-xl shadow-glass" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
       <div ref={containerRef} className="geocoded-map-container h-[min(280px,50vh)] w-full min-h-[220px]" />
     </div>
   );
