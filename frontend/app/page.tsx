@@ -23,19 +23,33 @@ const LocationPickMap = dynamic(() => import("@/components/LocationPickMap"), {
 });
 
 /* ── Score Ring ──────────────────────────────────────────── */
-function ScoreRing({ score }: { score: number }) {
+function ScoreRing({
+  score,
+  title,
+  icon,
+  goodColor,
+  badColor,
+}: {
+  score: number;
+  title: string;
+  icon: string;
+  goodColor: string;
+  badColor: string;
+}) {
   const clamped = Math.min(100, Math.max(0, score));
-  const r = 52;
+  const r = 46;
   const circumference = 2 * Math.PI * r;
   const offset = circumference - (clamped / 100) * circumference;
   const isGood = clamped >= 70;
-  const color = isGood ? "#008d7f" : "#e3814c";
+  const color = isGood ? goodColor : badColor;
   const label = isGood ? "Strong fit" : "Moderate fit";
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="relative flex h-44 w-44 items-center justify-center">
-        <svg className="h-44 w-44 -rotate-90" viewBox="0 0 120 120" aria-hidden>
+    <div className="flex flex-col items-center gap-2">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">{title}</p>
+      <span className="text-xl">{icon}</span>
+      <div className="relative flex h-36 w-36 items-center justify-center">
+        <svg className="h-36 w-36 -rotate-90" viewBox="0 0 120 120" aria-hidden>
           <circle
             className="fill-none"
             stroke="rgba(255,255,255,0.08)"
@@ -57,20 +71,20 @@ function ScoreRing({ score }: { score: number }) {
           />
         </svg>
         <div className="absolute text-center">
-          <div className="font-display text-5xl font-bold tabular-nums text-white">
+          <div className="font-display text-4xl font-bold tabular-nums text-white">
             {clamped.toFixed(0)}
           </div>
-          <div className="mt-0.5 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+          <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/40">
             / 100
           </div>
         </div>
       </div>
       <span
-        className="rounded-full px-4 py-1 text-xs font-semibold uppercase tracking-wider"
+        className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider"
         style={{
-          background: isGood ? "rgba(0,141,127,0.15)" : "rgba(227,129,76,0.15)",
-          border: `1px solid ${isGood ? "rgba(0,141,127,0.35)" : "rgba(227,129,76,0.35)"}`,
-          color: isGood ? "#00b8a6" : "#f0a070",
+          background: isGood ? `${goodColor}20` : `${badColor}20`,
+          border: `1px solid ${isGood ? `${goodColor}50` : `${badColor}50`}`,
+          color: isGood ? goodColor : badColor,
         }}
       >
         {label}
@@ -79,70 +93,6 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-/* ── Solar vs Edge DC Comparison Bar ────────────────────── */
-function ComparisonBar({
-  label,
-  solarScore,
-  edgeScore,
-  solarNote,
-  edgeNote,
-}: {
-  label: string;
-  solarScore: number;
-  edgeScore: number;
-  solarNote: string;
-  edgeNote: string;
-}) {
-  return (
-    <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-white/50">{label}</p>
-      {/* Solar row */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]"
-              style={{ background: "rgba(236,193,55,0.2)", color: "#ecc137" }}>☀</span>
-            <span className="font-semibold text-white/80">Rooftop Solar</span>
-          </div>
-          <span className="font-mono font-bold" style={{ color: "#ecc137" }}>{solarScore}</span>
-        </div>
-        <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-          <div
-            className="bar-fill h-full rounded-full"
-            style={{
-              width: `${solarScore}%`,
-              background: "linear-gradient(90deg, #ecc137, #f0d060)",
-              boxShadow: "0 0 8px rgba(236,193,55,0.4)",
-            }}
-          />
-        </div>
-        <p className="text-[11px] text-white/40">{solarNote}</p>
-      </div>
-      {/* Edge DC row */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px]"
-              style={{ background: "rgba(61,171,216,0.2)", color: "#3dabd8" }}>⚡</span>
-            <span className="font-semibold text-white/80">Edge Data Center</span>
-          </div>
-          <span className="font-mono font-bold" style={{ color: "#3dabd8" }}>{edgeScore}</span>
-        </div>
-        <div className="h-2.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
-          <div
-            className="bar-fill h-full rounded-full"
-            style={{
-              width: `${edgeScore}%`,
-              background: "linear-gradient(90deg, #3dabd8, #60c0e8)",
-              boxShadow: "0 0 8px rgba(61,171,216,0.4)",
-            }}
-          />
-        </div>
-        <p className="text-[11px] text-white/40">{edgeNote}</p>
-      </div>
-    </div>
-  );
-}
 
 /* ── Criterion Card (glass) ─────────────────────────────── */
 function CriterionCard({
@@ -150,6 +100,7 @@ function CriterionCard({
   label,
   score,
   weight,
+  solarWeight,
   summaryLine,
   rationale,
   scoringRules,
@@ -160,6 +111,7 @@ function CriterionCard({
   label: string;
   score: number;
   weight: number;
+  solarWeight: number;
   summaryLine: string;
   rationale: string;
   scoringRules: string;
@@ -178,7 +130,11 @@ function CriterionCard({
           </span>
           <div>
             <p className="font-display text-sm font-semibold text-white">{label}</p>
-            <p className="text-[11px] text-white/40">Weight: {weight}% of final score</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[10px] text-white/40">⚡ Edge DC: {weight}%</span>
+              <span className="text-white/20 text-[10px]">·</span>
+              <span className="text-[10px] text-white/40">☀ Solar: {solarWeight}%</span>
+            </div>
           </div>
         </div>
         <div
@@ -316,10 +272,6 @@ export default function Home() {
 
   const slaOk = result ? result.processing_time_ms < 60_000 : null;
 
-  /* Solar is always great on nuisance (quiet) and doesn't need grid proximity */
-  const solarPowerScore = 95;
-  const solarZoningScore = 92;
-
   return (
     <main className="min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -340,14 +292,13 @@ export default function Home() {
                   <span className="text-[11px] text-white/40 uppercase tracking-wider">Sales &amp; Real Estate</span>
                 </div>
                 <h1 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
-                  Edge DC vs.{" "}
-                  <span className="text-gradient-orange">Rooftop Solar</span>
+                  Edge Data Center{" "}
+                  <span className="text-gradient-orange">Infrastructure Readiness</span>
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/55 sm:text-base">
-                  Quick site screen for building owners. Two live risks scored instantly —
-                  grid proximity via <strong className="text-white/75">HIFLD</strong> and
-                  nuisance pressure from <strong className="text-white/75">residential land + schools</strong> via OSM.
-                  Walk into any owner meeting with numbers.
+                  Fast site screen for real estate and development teams. Six key dimensions scored
+                  — power infrastructure, flood resilience, climate burden, connectivity, electricity cost, and area rent pressure.
+                  Walk into meetings with numbers.
                 </p>
               </div>
               <div
@@ -363,9 +314,9 @@ export default function Home() {
         {/* ── How it works ─────────────────────────────────── */}
         <section className="mb-8 grid gap-4 sm:grid-cols-3">
           {[
-            { step: "01", title: "Drop a pin or paste address", desc: "Place the building on the map, or type the address the owner would recognize.", icon: "📍" },
-            { step: "02", title: "Read the verdict", desc: "Plain-English call + a 0–100 Edge DC Index. Higher means edge DC looks less painful on these two risks.", icon: "📊" },
-            { step: "03", title: "Use the talking points", desc: "Each line ties back to the math so compliance and leadership can follow.", icon: "💬" },
+            { step: "01", title: "Enter property address", desc: "Place the building on the map, or type the address to score.", icon: "📍" },
+            { step: "02", title: "Get a readiness score", desc: "Edge infrastructure readiness across six dimensions — power, flood, climate, connectivity, electricity cost, and area rent.", icon: "📊" },
+            { step: "03", title: "Use the talking points", desc: "Concrete talking points tied to each factor so you can brief leadership with confidence.", icon: "💬" },
           ].map(({ step, title, desc, icon }) => (
             <div key={step} className="glass rounded-2xl p-5">
               <div className="flex items-center gap-3 mb-3">
@@ -465,15 +416,15 @@ export default function Home() {
 
             {/* ── Scoring framework ──────────────────────────── */}
             <div className="glass rounded-2xl p-5 space-y-4">
-              <h3 className="font-display text-sm font-semibold text-white">5 angles reps use</h3>
-              <p className="text-[11px] text-white/35">Two automated today · three on the roadmap</p>
+              <h3 className="font-display text-sm font-semibold text-white">The six dimensions</h3>
+              <p className="text-[11px] text-white/35">All live across the U.S.</p>
               <div className="space-y-4 pt-1">
-                <RoadmapItem live label="Nuisance / zoning" desc="DCs need loud HVAC + diesel. Residential zones and schools mean noise complaints." source="OSM Overpass · residential + schools · 500 m radius" />
-                <RoadmapItem live label="Grid trenching cost" desc="Long runs from a major substation = millions per mile in trenching. Solar avoids that CapEx." source="HIFLD substations · straight-line miles" />
-                <div className="divider" />
-                <RoadmapItem live={false} label="Cooling / heat island" desc="Urban heat raises HVAC load and OPEX." source="OpenWeather · Landsat / USGS" />
-                <RoadmapItem live={false} label="Air quality / PM2.5" desc="Filters clog near highways and industry." source="EPA AirNow · OpenAQ" />
-                <RoadmapItem live={false} label="'Bunker' fit" desc="Glazed retail is a poor DC shell." source="OSM building tags · Street View (future)" />
+                <RoadmapItem live label="Power infrastructure" desc="Proximity to transmission-class substations. Distance = trenching cost and grid interconnection feasibility." source="HIFLD Open Data (ArcGIS) · haversine distance" />
+                <RoadmapItem live label="Flood risk" desc="FEMA Special Flood Hazard Area (SFHA) designation. Affects insurance, permitting, and resilience planning." source="FEMA NFHL · ArcGIS MapServer layer 28" />
+                <RoadmapItem live label="Climate burden" desc="Annual average temperatures and extreme heat days. Drives HVAC load and cooling OPEX." source="Open-Meteo Historical Weather Archive" />
+                <RoadmapItem live label="Connectivity readiness" desc="Area-level broadband providers and fiber availability. Lowers dark-fiber cost and improves redundancy." source="FCC Broadband Map · public API" />
+                <RoadmapItem live label="Power cost" desc="State-level commercial electricity pricing. A top OPEX line — affects long-term margin." source="EIA Retail Sales API · COM sector" />
+                <RoadmapItem live label="Area rent pressure" desc="Census tract median rent. Low rent = favorable alternative-use economics; high rent = competing demands." source="Census ACS · via FCC tract geocoding" />
               </div>
             </div>
           </div>
@@ -551,114 +502,179 @@ export default function Home() {
                   <p className="mt-2 text-sm leading-relaxed text-white/75">{result.verdict_plain_english}</p>
                 </div>
 
-                {/* ── Score + recommendation ─────────────────── */}
-                <div className="glass rounded-3xl p-6">
-                  <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-                    <ScoreRing score={result.final_score} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-widest text-white/35">Property</p>
-                      <p className="mt-1 font-display text-lg font-semibold text-white leading-snug">{result.address}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <span
-                          className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                          style={
-                            result.coordinate_source === "user_pin"
-                              ? { background: "rgba(236,193,55,0.15)", color: "#ecc137", border: "1px solid rgba(236,193,55,0.25)" }
-                              : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.12)" }
-                          }
-                        >
-                          {result.coordinate_source === "user_pin" ? "📍 Scored at your pin" : "🔍 Geocoded coordinates"}
-                        </span>
-                      </div>
-                      <p className="mt-2 font-mono text-[11px] text-white/25">
+                {/* ── Dual Score Rings ───────────────────────── */}
+                <div className="glass rounded-3xl p-6 space-y-5">
+                  {/* Property meta */}
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/35">Scored property</p>
+                    <p className="mt-1 font-display text-base font-semibold text-white leading-snug">{result.address}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <span
+                        className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                        style={
+                          result.coordinate_source === "user_pin"
+                            ? { background: "rgba(236,193,55,0.15)", color: "#ecc137", border: "1px solid rgba(236,193,55,0.25)" }
+                            : { background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.12)" }
+                        }
+                      >
+                        {result.coordinate_source === "user_pin" ? "📍 Scored at your pin" : "🔍 Geocoded coordinates"}
+                      </span>
+                      <span className="font-mono text-[11px] text-white/25">
                         {result.latitude.toFixed(5)}, {result.longitude.toFixed(5)}
-                      </p>
-                      <p className="mt-1 text-[11px] text-white/30">
-                        Server time: {(result.processing_time_ms / 1000).toFixed(2)}s
+                      </span>
+                      <span className="text-[11px] text-white/25">
+                        {(result.processing_time_ms / 1000).toFixed(2)}s
                         {slaOk !== null && (
                           <span style={{ color: slaOk ? "#00b8a6" : "#f0a070" }}>
-                            {" "}({slaOk ? "within" : "above"} 60s guideline)
+                            {" "}({slaOk ? "✓" : "↑"} 60s)
                           </span>
                         )}
-                      </p>
-                      <p className="mt-2 text-[11px] text-white/25 leading-relaxed">{result.formula_display}</p>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Recommendation */}
-                  <div
-                    className="mt-5 rounded-2xl px-5 py-4"
-                    style={
-                      result.final_score >= 70
-                        ? { background: "rgba(0,141,127,0.1)", border: "1px solid rgba(0,141,127,0.25)" }
-                        : { background: "rgba(227,129,76,0.1)", border: "1px solid rgba(227,129,76,0.25)" }
-                    }
-                  >
-                    <p
-                      className="font-display text-sm font-bold"
-                      style={{ color: result.final_score >= 70 ? "#00b8a6" : "#f0a070" }}
+                  {/* Two score rings */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div
+                      className="flex flex-col items-center rounded-2xl p-4"
+                      style={{ background: "rgba(61,171,216,0.06)", border: "1px solid rgba(61,171,216,0.15)" }}
                     >
-                      {result.recommendation_title}
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-white/60">{result.recommendation_body}</p>
+                      <ScoreRing
+                        score={result.edge_dc_score}
+                        title="Edge DC Readiness"
+                        icon="⚡"
+                        goodColor="#3dabd8"
+                        badColor="#e3814c"
+                      />
+                    </div>
+                    <div
+                      className="flex flex-col items-center rounded-2xl p-4"
+                      style={{ background: "rgba(236,193,55,0.06)", border: "1px solid rgba(236,193,55,0.15)" }}
+                    >
+                      <ScoreRing
+                        score={result.solar_score}
+                        title="Solar Feasibility"
+                        icon="☀️"
+                        goodColor="#ecc137"
+                        badColor="#e3814c"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Two recommendation pills */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div
+                      className="rounded-2xl px-4 py-3"
+                      style={
+                        result.edge_dc_score >= 70
+                          ? { background: "rgba(61,171,216,0.08)", border: "1px solid rgba(61,171,216,0.25)" }
+                          : { background: "rgba(227,129,76,0.08)", border: "1px solid rgba(227,129,76,0.25)" }
+                      }
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-1">⚡ Edge DC</p>
+                      <p
+                        className="font-display text-xs font-bold"
+                        style={{ color: result.edge_dc_score >= 70 ? "#3dabd8" : "#f0a070" }}
+                      >
+                        {result.recommendation_title}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-white/55">{result.recommendation_body}</p>
+                    </div>
+                    <div
+                      className="rounded-2xl px-4 py-3"
+                      style={
+                        result.solar_score >= 70
+                          ? { background: "rgba(236,193,55,0.08)", border: "1px solid rgba(236,193,55,0.25)" }
+                          : { background: "rgba(227,129,76,0.08)", border: "1px solid rgba(227,129,76,0.25)" }
+                      }
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-1">☀️ Solar</p>
+                      <p
+                        className="font-display text-xs font-bold"
+                        style={{ color: result.solar_score >= 70 ? "#ecc137" : "#f0a070" }}
+                      >
+                        {result.solar_recommendation_title}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-white/55">{result.solar_recommendation_body}</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* ── Solar vs Edge DC Comparison ────────────── */}
-                <div className="glass rounded-3xl p-6 space-y-6">
-                  <div>
-                    <h3 className="font-display text-base font-semibold text-white">Solar vs. Edge DC — head to head</h3>
-                    <p className="mt-1 text-xs text-white/35">
-                      Side-by-side risk scores per criterion. Higher = better outcome for that use case.
-                    </p>
-                  </div>
-                  <div className="divider" />
-                  <ComparisonBar
-                    label="Grid proximity (high-voltage power)"
-                    solarScore={solarPowerScore}
-                    edgeScore={result.power.score}
-                    solarNote="Solar generates on-site — no substation distance penalty"
-                    edgeNote={`Nearest heavy substation: ${result.power.distance_miles?.toFixed(1) ?? "—"} mi · ${result.power.band_label}`}
-                  />
-                  <div className="divider" />
-                  <ComparisonBar
-                    label="Nuisance / zoning pressure"
-                    solarScore={solarZoningScore}
-                    edgeScore={result.zoning.score}
-                    solarNote="Silent panels — virtually no residential or school friction"
-                    edgeNote={`${result.zoning.residential_percent}% sensitive coverage · ${result.zoning.school_count} school(s) within ${result.zoning.radius_meters} m`}
-                  />
-                  <div
-                    className="rounded-xl px-4 py-3 text-xs text-white/35"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-                  >
-                    Solar baseline scores are fixed reference points reflecting typical rooftop performance on these two dimensions, not site-specific measurements.
-                  </div>
-                </div>
-
-                {/* ── Criterion detail cards ──────────────────── */}
+                {/* ── Five factor breakdown cards ────────────── */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <CriterionCard
                     icon="⚡"
-                    label="Grid proximity"
-                    score={result.power.score}
-                    weight={result.power.weight_percent}
-                    summaryLine={result.power.band_label}
-                    rationale={result.power.rationale}
-                    scoringRules={result.power.scoring_rules_plain}
-                    dataSource={result.power.data_source}
+                    label="Power Infrastructure"
+                    score={result.power_infrastructure.score}
+                    weight={result.power_infrastructure.weight_percent}
+                    solarWeight={result.power_infrastructure.solar_weight_percent}
+                    summaryLine={`Nearest substation: ${result.power_infrastructure.nearest_substation_distance_km.toFixed(1)} km${
+                      result.power_infrastructure.nearest_substation_name ? ` (${result.power_infrastructure.nearest_substation_name})` : ""
+                    }`}
+                    rationale={result.power_infrastructure.rationale}
+                    scoringRules={result.power_infrastructure.scoring_rules_plain}
+                    dataSource={result.power_infrastructure.data_source}
                     accentColor="#3dabd8"
                   />
                   <CriterionCard
-                    icon="🏘"
-                    label="Nuisance / zoning"
-                    score={result.zoning.score}
-                    weight={result.zoning.weight_percent}
-                    summaryLine={`${result.zoning.residential_percent}% sensitive coverage · ${result.zoning.school_count} school(s)`}
-                    rationale={result.zoning.rationale}
-                    scoringRules={result.zoning.scoring_rules_plain}
-                    dataSource={result.zoning.data_source}
-                    accentColor="#e3814c"
+                    icon="🌊"
+                    label="Flood Risk"
+                    score={result.flood_risk.score}
+                    weight={result.flood_risk.weight_percent}
+                    solarWeight={result.flood_risk.solar_weight_percent}
+                    summaryLine={`Zone ${result.flood_risk.zone_label}${result.flood_risk.is_high_risk ? " — high risk" : " — low risk"}`}
+                    rationale={result.flood_risk.rationale}
+                    scoringRules={result.flood_risk.scoring_rules_plain}
+                    dataSource={result.flood_risk.data_source}
+                    accentColor={result.flood_risk.is_high_risk ? "#e3814c" : "#00b8a6"}
+                  />
+                  <CriterionCard
+                    icon="🌡"
+                    label="Climate"
+                    score={result.climate_burden.score}
+                    weight={result.climate_burden.weight_percent}
+                    solarWeight={result.climate_burden.solar_weight_percent}
+                    summaryLine={`${result.climate_burden.avg_temp_f.toFixed(1)}°F avg · ${result.climate_burden.extreme_heat_days} heat days/yr · Solar: ${result.climate_burden.solar_score}/100`}
+                    rationale={result.climate_burden.rationale}
+                    scoringRules={result.climate_burden.scoring_rules_plain}
+                    dataSource={result.climate_burden.data_source}
+                    accentColor="#ecc137"
+                  />
+                  <CriterionCard
+                    icon="📡"
+                    label="Connectivity Readiness"
+                    score={result.connectivity_readiness.score}
+                    weight={result.connectivity_readiness.weight_percent}
+                    solarWeight={result.connectivity_readiness.solar_weight_percent}
+                    summaryLine={`${result.connectivity_readiness.provider_count} provider(s) · ${result.connectivity_readiness.fiber_provider_count} fiber · ${result.connectivity_readiness.best_download_mbps.toFixed(0)} Mbps`}
+                    rationale={result.connectivity_readiness.rationale}
+                    scoringRules={result.connectivity_readiness.scoring_rules_plain}
+                    dataSource={result.connectivity_readiness.data_source}
+                    accentColor="#00b8a6"
+                  />
+                  <CriterionCard
+                    icon="💵"
+                    label="Power Cost"
+                    score={result.power_cost.score}
+                    weight={result.power_cost.weight_percent}
+                    solarWeight={result.power_cost.solar_weight_percent}
+                    summaryLine={`${result.power_cost.state_code}: $${result.power_cost.cost_per_kwh.toFixed(3)}/kWh · Solar: ${result.power_cost.solar_score}/100`}
+                    rationale={result.power_cost.rationale}
+                    scoringRules={result.power_cost.scoring_rules_plain}
+                    dataSource={result.power_cost.data_source}
+                    accentColor={result.power_cost.score >= 70 ? "#00b8a6" : "#e3814c"}
+                  />
+                  <CriterionCard
+                    icon="🏘️"
+                    label="Area Rent Pressure"
+                    score={result.area_rent_pressure.score}
+                    weight={result.area_rent_pressure.weight_percent}
+                    solarWeight={result.area_rent_pressure.solar_weight_percent}
+                    summaryLine={`${result.area_rent_pressure.tract_name} — $${result.area_rent_pressure.median_rent_monthly.toLocaleString('en-US', {maximumFractionDigits: 0})}/mo`}
+                    rationale={result.area_rent_pressure.rationale}
+                    scoringRules={result.area_rent_pressure.scoring_rules_plain}
+                    dataSource={result.area_rent_pressure.data_source}
+                    accentColor={result.area_rent_pressure.score >= 70 ? "#00b8a6" : "#e3814c"}
                   />
                 </div>
 
@@ -701,45 +717,6 @@ export default function Home() {
                     {result.owner_talking_points.map((line, i) => (
                       <TalkingPoint key={i} text={line} index={i} />
                     ))}
-                  </div>
-                </div>
-
-                {/* ── Methodology + coverage ──────────────────── */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="glass rounded-2xl p-5 space-y-3">
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/35">Why sales can stand behind this</p>
-                    <div className="space-y-2.5 pt-1">
-                      {[
-                        { icon: "⚡", text: "Grid reach scored against HIFLD transmission substations — same data utilities use for interconnection studies." },
-                        { icon: "🏘", text: "Residential noise exposure from OSM landuse polygons and school footprints within a 500 m disk." },
-                        { icon: "🌡", text: "Annual heat profile from Open-Meteo archive — a year of daily max temps, not a single reading." },
-                        { icon: "🌊", text: "Flood zone pulled live from FEMA's National Flood Hazard Layer, the same dataset lenders use." },
-                        { icon: "💨", text: "PM2.5 from Open-Meteo Air Quality API averaged over the past 7 days." },
-                        { icon: "🔌", text: "Fiber proximity from OSM-mapped conduit and telecom nodes — a proxy for dark-fiber availability." },
-                      ].map(({ icon, text }, i) => (
-                        <div key={i} className="flex items-start gap-2.5">
-                          <span className="mt-0.5 shrink-0 text-sm">{icon}</span>
-                          <p className="text-xs leading-relaxed text-white/55">{text}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="glass rounded-2xl p-5 space-y-3">
-                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/35">Scalability &amp; coverage</p>
-                    <div className="space-y-2.5 pt-1">
-                      {[
-                        { icon: "🌎", text: "Works for any U.S. address the geocoder can place — no manual data prep per market." },
-                        { icon: "🔑", text: "Zero API keys required. All six data sources are public and free." },
-                        { icon: "⏱", text: "All six data pulls run in parallel. Target turnaround is under 60 seconds per lookup." },
-                        { icon: "🔄", text: "If any upstream service is down, that leg falls back automatically and is flagged in the data source note." },
-                        { icon: "📐", text: "Weights and scoring bands are documented on every criterion card — auditable in front of owners and legal." },
-                      ].map(({ icon, text }, i) => (
-                        <div key={i} className="flex items-start gap-2.5">
-                          <span className="mt-0.5 shrink-0 text-sm">{icon}</span>
-                          <p className="text-xs leading-relaxed text-white/55">{text}</p>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 </div>
 

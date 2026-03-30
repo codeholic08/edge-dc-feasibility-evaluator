@@ -1,91 +1,140 @@
 import type { EvaluateResponse } from "./types";
 
 /**
- * Older API processes may not return newer fields; fill gaps so the UI never calls .map on undefined.
+ * Map raw backend response to strongly-typed EvaluateResponse.
+ * Provides safe defaults for missing fields to ensure UI never renders undefined.
  */
 function normalizeEvaluateResponse(raw: unknown): EvaluateResponse {
   if (typeof raw !== "object" || raw === null) {
     throw new Error("Invalid response from server");
   }
   const r = raw as Record<string, unknown>;
-  const power = (typeof r.power === "object" && r.power !== null ? r.power : {}) as Record<
-    string,
-    unknown
-  >;
-  const zoning = (typeof r.zoning === "object" && r.zoning !== null ? r.zoning : {}) as Record<
-    string,
-    unknown
-  >;
 
-  const powerBand =
-    typeof power.band_label === "string" ? power.band_label : "";
-  const zoningRadius =
-    typeof zoning.radius_meters === "number" ? zoning.radius_meters : 500;
+  const safeObject = (obj: unknown): Record<string, unknown> =>
+    typeof obj === "object" && obj !== null ? (obj as Record<string, unknown>) : {};
+
+  const infra = safeObject(r.power_infrastructure);
+  const flood = safeObject(r.flood_risk);
+  const climate = safeObject(r.climate_burden);
+  const connectivity = safeObject(r.connectivity_readiness);
+  const cost = safeObject(r.power_cost);
+  const rent = safeObject(r.area_rent_pressure);
 
   return {
     address: String(r.address ?? ""),
     coordinate_source: r.coordinate_source === "user_pin" ? "user_pin" : "geocoded",
-    latitude: Number(r.latitude),
-    longitude: Number(r.longitude),
-    final_score: Number(r.final_score),
+    latitude: Number(r.latitude ?? 0),
+    longitude: Number(r.longitude ?? 0),
+    edge_dc_score: Number(r.edge_dc_score ?? 0),
+    solar_score: Number(r.solar_score ?? 0),
+
+    power_infrastructure: {
+      score: Number(infra.score ?? 0),
+      weight_percent: Number(infra.weight_percent ?? 27),
+      solar_weight_percent: Number(infra.solar_weight_percent ?? 10),
+      nearest_substation_distance_km: Number(infra.nearest_substation_distance_km ?? 0),
+      nearest_substation_name: typeof infra.nearest_substation_name === "string" ? infra.nearest_substation_name : undefined,
+      data_source: String(infra.data_source ?? "HIFLD"),
+      rationale: String(infra.rationale ?? ""),
+      scoring_rules_plain: String(infra.scoring_rules_plain ?? ""),
+    },
+
+    flood_risk: {
+      score: Number(flood.score ?? 0),
+      weight_percent: Number(flood.weight_percent ?? 20),
+      solar_weight_percent: Number(flood.solar_weight_percent ?? 20),
+      zone_label: String(flood.zone_label ?? "Unknown"),
+      is_high_risk: flood.is_high_risk === true,
+      feature_count: Number(flood.feature_count ?? 0),
+      data_source: String(flood.data_source ?? "FEMA NFHL"),
+      rationale: String(flood.rationale ?? ""),
+      scoring_rules_plain: String(flood.scoring_rules_plain ?? ""),
+    },
+
+    climate_burden: {
+      score: Number(climate.score ?? 0),
+      weight_percent: Number(climate.weight_percent ?? 12),
+      solar_score: Number(climate.solar_score ?? 0),
+      solar_weight_percent: Number(climate.solar_weight_percent ?? 35),
+      avg_temp_f: Number(climate.avg_temp_f ?? 0),
+      extreme_heat_days: Number(climate.extreme_heat_days ?? 0),
+      data_source: String(climate.data_source ?? "Open-Meteo"),
+      rationale: String(climate.rationale ?? ""),
+      scoring_rules_plain: String(climate.scoring_rules_plain ?? ""),
+    },
+
+    connectivity_readiness: {
+      score: Number(connectivity.score ?? 0),
+      weight_percent: Number(connectivity.weight_percent ?? 18),
+      solar_weight_percent: Number(connectivity.solar_weight_percent ?? 3),
+      provider_count: Number(connectivity.provider_count ?? 0),
+      fiber_provider_count: Number(connectivity.fiber_provider_count ?? 0),
+      best_download_mbps: Number(connectivity.best_download_mbps ?? 0),
+      best_upload_mbps: Number(connectivity.best_upload_mbps ?? 0),
+      has_symmetric_fiber: connectivity.has_symmetric_fiber === true,
+      data_source: String(connectivity.data_source ?? "FCC Broadband Map"),
+      rationale: String(connectivity.rationale ?? ""),
+      scoring_rules_plain: String(connectivity.scoring_rules_plain ?? ""),
+    },
+
+    power_cost: {
+      score: Number(cost.score ?? 0),
+      weight_percent: Number(cost.weight_percent ?? 13),
+      solar_score: Number(cost.solar_score ?? 0),
+      solar_weight_percent: Number(cost.solar_weight_percent ?? 25),
+      state_code: String(cost.state_code ?? "US"),
+      latest_period: String(cost.latest_period ?? ""),
+      cost_per_kwh: Number(cost.cost_per_kwh ?? 0),
+      sector_used: String(cost.sector_used ?? "COM"),
+      data_source: String(cost.data_source ?? "EIA"),
+      rationale: String(cost.rationale ?? ""),
+      scoring_rules_plain: String(cost.scoring_rules_plain ?? ""),
+    },
+
+    area_rent_pressure: {
+      score: Number(rent.score ?? 0),
+      weight_percent: Number(rent.weight_percent ?? 10),
+      solar_weight_percent: Number(rent.solar_weight_percent ?? 7),
+      tract_name: String(rent.tract_name ?? "Unknown"),
+      state_code: String(rent.state_code ?? "US"),
+      county_code: String(rent.county_code ?? "000"),
+      tract_code: String(rent.tract_code ?? "000000"),
+      median_rent_monthly: Number(rent.median_rent_monthly ?? 0),
+      rent_metric_type: String(rent.rent_metric_type ?? "unknown"),
+      fallback_used: rent.fallback_used === true,
+      data_source: String(rent.data_source ?? "Census ACS"),
+      rationale: String(rent.rationale ?? ""),
+      scoring_rules_plain: String(rent.scoring_rules_plain ?? ""),
+    },
+
     recommendation_title: String(r.recommendation_title ?? ""),
     recommendation_body: String(r.recommendation_body ?? ""),
+    solar_recommendation_title: String(r.solar_recommendation_title ?? ""),
+    solar_recommendation_body: String(r.solar_recommendation_body ?? ""),
     phase_note: String(r.phase_note ?? ""),
     processing_time_ms: typeof r.processing_time_ms === "number" ? r.processing_time_ms : 0,
     verdict_plain_english: String(
       r.verdict_plain_english ??
-        "This site was scored using grid proximity and nuisance / zoning pressure (residential + schools). See the recommendation and criteria below.",
+        "This site was evaluated across six key dimensions.",
     ),
     formula_display: String(
       r.formula_display ??
-        "Final score = (60% × grid proximity score) + (40% × nuisance / zoning score). Nuisance uses OSM residential + schools within 500 m.",
+        "Edge DC: 27% power infra + 20% flood + 18% connectivity + 12% climate + 13% power cost + 10% rent. Solar: 35% climate + 25% power cost + 20% flood + 10% power infra + 7% rent + 3% connectivity.",
     ),
     methodology_for_teams: String(
       r.methodology_for_teams ??
-        "We focus on two owner-intuitive risks: reaching serious grid power, and avoiding heavy residential edges that amplify noise and permitting issues. This screen is a conversation starter, not a final engineering sign-off.",
+        "Both scores use the same six live data dimensions with different weightings.",
     ),
     coverage_for_teams: String(
       r.coverage_for_teams ??
-        "The same workflow applies anywhere the address geocodes: enter a property, get a scored read in seconds to about a minute depending on network conditions.",
+        "This evaluation works for any U.S. commercial address.",
     ),
     owner_talking_points: Array.isArray(r.owner_talking_points)
       ? (r.owner_talking_points as unknown[]).map((x) => String(x))
       : [
-          `Quick screen: edge data center feasibility is ${Number(r.final_score).toFixed(1)} out of 100 on two headline risks — not a final study.`,
-          "Review grid proximity and residential pressure in the criteria cards, then align with the recommendation above.",
+          `Edge DC score: ${Number(r.edge_dc_score ?? 0).toFixed(1)} / 100. Solar score: ${Number(r.solar_score ?? 0).toFixed(1)} / 100.`,
+          "See the detailed breakdown below for each factor.",
         ],
-    power: {
-      score: Number(power.score),
-      weight_percent: Number(power.weight_percent ?? 60),
-      distance_miles: Number(power.distance_miles),
-      band_label: powerBand,
-      data_source: String(power.data_source ?? ""),
-      rationale: String(
-        power.rationale ??
-          "Edge facilities need large, reliable grid power; long distances to transmission-class infrastructure usually mean costly trenching and upgrades.",
-      ),
-      scoring_rules_plain: String(power.scoring_rules_plain ?? powerBand),
-    },
-    zoning: {
-      score: Number(zoning.score),
-      weight_percent: Number(zoning.weight_percent ?? 40),
-      residential_percent: Number(zoning.residential_percent ?? 0),
-      residential_land_percent:
-        typeof zoning.residential_land_percent === "number"
-          ? zoning.residential_land_percent
-          : Number(zoning.residential_percent ?? 0),
-      school_count: typeof zoning.school_count === "number" ? zoning.school_count : 0,
-      radius_meters: zoningRadius,
-      data_source: String(zoning.data_source ?? ""),
-      rationale: String(
-        zoning.rationale ??
-          "Data centers are loud; residential land and schools nearby raise noise-ordinance and permitting risk. Solar is quiet.",
-      ),
-      scoring_rules_plain: String(
-        zoning.scoring_rules_plain ??
-          `Sensitive land share within ${zoningRadius} m of the pin drives this subscore.`,
-      ),
-    },
   };
 }
 

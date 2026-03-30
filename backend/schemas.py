@@ -2,8 +2,11 @@
 Pydantic models for the public HTTP API.
 
 These shapes mirror what the Next.js dashboard consumes so the contract stays obvious
-across all scoring dimensions (power, zoning, climate, flood, air quality, fiber).
+across all six scoring dimensions of the Edge Infrastructure Readiness Score:
+  power infrastructure, flood risk, climate burden, connectivity readiness, power cost, area rent pressure.
 """
+
+from __future__ import annotations
 
 from typing import Literal, Optional
 
@@ -34,58 +37,57 @@ class EvaluateRequest(BaseModel):
         return self.model_copy(update={"address": stripped})
 
 
-class PowerBreakdown(BaseModel):
+class PowerInfrastructureBreakdown(BaseModel):
     """
-    Constraint 1 — proximity to high-voltage infrastructure (HIFLD substations).
+    Factor 1 — proximity to transmission-class substations (HIFLD Open Data / ArcGIS).
 
-    Weight: 35% of blended feasibility score.
+    Weight: 27% Edge DC / 10% Solar.
     """
 
-    score: int = Field(..., ge=0, le=100, description="Raw 0–100 score for this constraint")
-    weight_percent: int = Field(35, description="Weight in the blended feasibility score")
-    distance_miles: float = Field(..., description="Great-circle distance to nearest substation")
-    band_label: str = Field(..., description="Human-readable bucket: <1 mi, 1–3 mi, or >3 mi")
-    data_source: str = Field(..., description="Dataset attribution for judges / compliance")
-    rationale: str = Field(..., description="Why this factor matters when explaining tradeoffs to a property owner")
-    scoring_rules_plain: str = Field(..., description="Plain-language description of how the 0–100 subscore is assigned")
+    score: int = Field(..., ge=0, le=100, description="Raw 0–100 score for this factor")
+    weight_percent: int = Field(28, description="Edge DC weight in the blended readiness score")
+    solar_weight_percent: int = Field(10, description="Solar weight in the solar feasibility score")
+    nearest_substation_distance_km: float = Field(
+        ..., description="Great-circle distance to the nearest HIFLD substation in kilometres",
+    )
+    nearest_substation_name: Optional[str] = Field(
+        None, description="NAME attribute of the nearest substation feature, if present",
+    )
+    data_source: str = Field(..., description="Dataset attribution for auditability")
+    rationale: str = Field(..., description="Why substation proximity matters for edge DC economics")
+    scoring_rules_plain: str = Field(..., description="Plain-language description of the 0–100 scoring bands")
 
 
-class ZoningBreakdown(BaseModel):
+class FloodRiskBreakdown(BaseModel):
     """
-    Constraint 2 — nuisance / sensitive receptors within 500 m (OSM Overpass).
+    Factor 2 — FEMA flood zone classification near the pin (NFHL ArcGIS FeatureServer).
 
-    ``residential_percent`` is the **combined** share of the analysis disk covered by residential
-    land polygons plus school footprints / buffers (used for the 0–100 subscore).
-
-    Weight: 25% of blended feasibility score.
+    Weight: 20% Edge DC / 20% Solar.
     """
 
     score: int = Field(..., ge=0, le=100)
-    weight_percent: int = Field(25)
-    residential_percent: float = Field(
-        ..., ge=0, le=100,
-        description="Combined sensitive coverage % of disk (residential land + schools — score input)",
-    )
-    residential_land_percent: float = Field(
-        ..., ge=0, le=100,
-        description="Residential landuse polygons only, as % of the same disk",
-    )
-    school_count: int = Field(..., ge=0, description="Distinct OSM school features in radius")
-    radius_meters: int = Field(500, description="Analysis disk radius")
-    data_source: str
-    rationale: str = Field(..., description="Why residential adjacency matters for noise, permitting, and neighbor risk")
-    scoring_rules_plain: str = Field(..., description="Plain-language rule for the residential / noise subscore")
+    weight_percent: int = Field(18)
+    solar_weight_percent: int = Field(30)
+    zone_label: str = Field(..., description="Most restrictive FEMA flood zone within 200 m (e.g. AE, X, VE)")
+    is_high_risk: bool = Field(..., description="True if any A or V zone intersects the 200 m search radius")
+    feature_count: int = Field(..., ge=0, description="Number of FEMA NFHL features found within search radius")
+    data_source: str = Field(..., description="Dataset attribution")
+    rationale: str = Field(..., description="Why FEMA SFHA designation matters for infrastructure resilience")
+    scoring_rules_plain: str = Field(..., description="Plain-language scoring rule for flood zone classification")
 
 
-class ClimateBreakdown(BaseModel):
+class ClimateBurdenBreakdown(BaseModel):
     """
-    Constraint 3 — cooling climate risk from Open-Meteo historical archive.
+    Factor 3 — cooling risk (Edge DC) / generation potential (Solar) from Open-Meteo.
 
-    Weight: 15% of blended feasibility score.
+    Edge DC weight: 12% — cool = good (lower HVAC costs).
+    Solar weight:   35% — hot  = good (higher irradiance / generation).
     """
 
-    score: int = Field(..., ge=0, le=100)
-    weight_percent: int = Field(15)
+    score: int = Field(..., ge=0, le=100, description="Edge DC climate score (cool = high)")
+    weight_percent: int = Field(12, description="Edge DC weight")
+    solar_score: int = Field(..., ge=0, le=100, description="Solar climate score (hot = high)")
+    solar_weight_percent: int = Field(28, description="Solar weight")
     avg_temp_f: float = Field(..., description="Annual average of daily maximum temperature in °F")
     extreme_heat_days: int = Field(..., ge=0, description="Days per year where daily max exceeded 95 °F")
     data_source: str = Field(..., description="Dataset attribution")
@@ -93,53 +95,69 @@ class ClimateBreakdown(BaseModel):
     scoring_rules_plain: str = Field(..., description="Plain-language scoring bands for temperature and heat days")
 
 
-class FloodBreakdown(BaseModel):
+class ConnectivityReadinessBreakdown(BaseModel):
     """
-    Constraint 4 — FEMA flood zone classification (NFHL ArcGIS FeatureServer).
+    Factor 4 — area-level broadband and fiber availability (FCC Broadband Map public API).
 
-    Weight: 10% of blended feasibility score.
-    """
-
-    score: int = Field(..., ge=0, le=100)
-    weight_percent: int = Field(10)
-    zone_label: str = Field(..., description="Most restrictive FEMA flood zone within 200 m (e.g. AE, X, VE)")
-    is_high_risk: bool = Field(..., description="True if any A or V zone intersects the 200 m search radius")
-    feature_count: int = Field(..., ge=0, description="Number of FEMA NFHL features found within search radius")
-    data_source: str = Field(..., description="Dataset attribution")
-    rationale: str = Field(..., description="Why FEMA SFHA designation matters for infrastructure permitting")
-    scoring_rules_plain: str = Field(..., description="Plain-language scoring rule for flood zone classification")
-
-
-class AirQualityBreakdown(BaseModel):
-    """
-    Constraint 5 — ambient PM2.5 and dust concentrations (Open-Meteo Air Quality API).
-
-    Weight: 8% of blended feasibility score.
+    Weight: 18% Edge DC / 3% Solar.
     """
 
     score: int = Field(..., ge=0, le=100)
-    weight_percent: int = Field(8)
-    avg_pm25: float = Field(..., ge=0, description="7-day hourly mean PM2.5 concentration in µg/m³")
-    avg_dust: float = Field(..., ge=0, description="7-day hourly mean dust concentration in µg/m³")
+    weight_percent: int = Field(22)
+    solar_weight_percent: int = Field(4)
+    provider_count: int = Field(..., ge=0, description="Distinct broadband providers serving the area near the pin")
+    fiber_provider_count: int = Field(..., ge=0, description="Providers offering fiber-based service near the pin")
+    best_download_mbps: float = Field(..., ge=0, description="Peak advertised download speed across all providers (Mbps)")
+    best_upload_mbps: float = Field(..., ge=0, description="Peak advertised upload speed across all providers (Mbps)")
+    has_symmetric_fiber: bool = Field(
+        ..., description="True if a fiber provider offers upload ≥ 80% of download speed",
+    )
     data_source: str = Field(..., description="Dataset attribution")
-    rationale: str = Field(..., description="Why PM2.5 raises filter and permitting costs for edge DCs")
-    scoring_rules_plain: str = Field(..., description="Plain-language PM2.5 scoring bands aligned with EPA AQI")
+    rationale: str = Field(..., description="Why broadband / fiber availability matters for edge DC connectivity")
+    scoring_rules_plain: str = Field(..., description="Plain-language scoring bands for provider and fiber availability")
 
 
-class FiberBreakdown(BaseModel):
+class PowerCostBreakdown(BaseModel):
     """
-    Constraint 6 — fiber conduit and telecom node proximity (OSM Overpass).
+    Factor 5 — area-level commercial electricity price by state (EIA v2 retail-sales API).
 
-    Weight: 7% of blended feasibility score.
+    Edge DC weight: 13% — cheap = good (lower OPEX).
+    Solar weight:   25% — expensive = good (better savings ROI).
+    """
+
+    score: int = Field(..., ge=0, le=100, description="Edge DC power cost score (cheap = high)")
+    weight_percent: int = Field(13, description="Edge DC weight")
+    solar_score: int = Field(..., ge=0, le=100, description="Solar power cost score (expensive = high)")
+    solar_weight_percent: int = Field(20, description="Solar weight")
+    state_code: str = Field(..., description="Two-letter EIA state code derived from reverse geocoding")
+    latest_period: str = Field(..., description="Most recent monthly period returned by EIA (e.g. 2024-11)")
+    cost_per_kwh: float = Field(..., ge=0, description="Commercial electricity price in $/kWh")
+    sector_used: str = Field(..., description="EIA sector queried (COM = commercial)")
+    data_source: str = Field(..., description="Dataset attribution")
+    rationale: str = Field(..., description="Why electricity price matters for long-term edge DC economics")
+    scoring_rules_plain: str = Field(..., description="Plain-language scoring bands for $/kWh commercial rate")
+
+
+class AreaRentPressureBreakdown(BaseModel):
+    """
+    Factor 6 — area-level median rent pressure via FCC Census lookup + Census ACS 5-year.
+
+    Weight: 10% Edge DC / 7% Solar.
     """
 
     score: int = Field(..., ge=0, le=100)
     weight_percent: int = Field(7)
-    fiber_way_count: int = Field(..., ge=0, description="OSM fiber conduit ways within 1000 m")
-    telecom_node_count: int = Field(..., ge=0, description="OSM telecom / data-center nodes within 500 m")
-    data_source: str = Field(..., description="Dataset attribution")
-    rationale: str = Field(..., description="Why mapped street fiber lowers dark-fiber costs for edge DCs")
-    scoring_rules_plain: str = Field(..., description="Plain-language scoring bands for fiber way and telecom node counts")
+    solar_weight_percent: int = Field(8)
+    tract_name: str = Field(..., description="Census tract name and geography identifier")
+    state_code: str = Field(..., description="Two-digit Census state FIPS code")
+    county_code: str = Field(..., description="Three-digit County FIPS code")
+    tract_code: str = Field(..., description="Six-digit Census tract code")
+    median_rent_monthly: float = Field(..., ge=0, description="Median monthly rent for the tract (dollars)")
+    rent_metric_type: str = Field(..., description="Type of rent metric (gross_rent or contract_rent)")
+    fallback_used: bool = Field(..., description="True if Census API was unavailable and fallback estimate was used")
+    data_source: str = Field(..., description="Dataset attribution and provenance")
+    rationale: str = Field(..., description="Why area rent pressure matters for edge DC site economics")
+    scoring_rules_plain: str = Field(..., description="Plain-language scoring bands for median rent")
 
 
 class EvaluateResponse(BaseModel):
@@ -151,32 +169,42 @@ class EvaluateResponse(BaseModel):
     )
     latitude: float
     longitude: float
-    final_score: float = Field(..., ge=0, le=100, description="Weighted blend across six dimensions")
-    power: PowerBreakdown
-    zoning: ZoningBreakdown
-    climate: ClimateBreakdown
-    flood: FloodBreakdown
-    air_quality: AirQualityBreakdown
-    fiber: FiberBreakdown
+    edge_dc_score: float = Field(
+        ..., ge=0, le=100,
+        description="Weighted Edge DC Infrastructure Readiness Score (0–100)",
+    )
+    solar_score: float = Field(
+        ..., ge=0, le=100,
+        description="Weighted Solar Feasibility Score (0–100)",
+    )
+    power_infrastructure: PowerInfrastructureBreakdown
+    flood_risk: FloodRiskBreakdown
+    climate_burden: ClimateBurdenBreakdown
+    connectivity_readiness: ConnectivityReadinessBreakdown
+    power_cost: PowerCostBreakdown
+    area_rent_pressure: AreaRentPressureBreakdown
     recommendation_title: str
     recommendation_body: str
+    solar_recommendation_title: str
+    solar_recommendation_body: str
     phase_note: str = Field(
         ...,
         description=(
-            "Banner listing all six live data sources: HIFLD substations (grid), OSM Overpass "
-            "(zoning + fiber), Open-Meteo archive (climate), FEMA NFHL (flood), "
-            "Open-Meteo AQ (air quality). Service-error fallbacks noted per criterion."
+            "Banner listing all six live data sources: HIFLD substations (power infrastructure), "
+            "FEMA NFHL (flood risk), Open-Meteo archive (climate burden), "
+            "FCC Broadband Map (connectivity readiness), EIA retail-sales API (power cost), "
+            "Census ACS (area rent pressure). Service-error fallbacks noted per criterion."
         ),
     )
     processing_time_ms: int = Field(
         ..., ge=0,
-        description="Server-side time to geocode + score all six dimensions (milliseconds)",
+        description="Server-side time to geocode + score all five dimensions (milliseconds)",
     )
     verdict_plain_english: str = Field(
         ..., description="One short paragraph a first-time user can read before diving into numbers",
     )
     formula_display: str = Field(
-        ..., description="Exact weighting across all six dimensions for auditability",
+        ..., description="Exact weighting across all five dimensions for auditability",
     )
     methodology_for_teams: str = Field(
         ..., description="How to defend the model in a sales or real-estate conversation",
